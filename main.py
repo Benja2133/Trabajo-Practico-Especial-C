@@ -117,97 +117,62 @@ def generador_atencion(generador, lambda_=40):
     x = generador.random() 
     return -math.log(1-x)/lambda_
 
-def simular(generador,Horas = 48):
-    arribos = generar_arribos(Horas,generador)
-    print(f"Cantidad de arribos: {len(arribos)}")
+def simular(generador, horas=48):
+    arribos = generar_arribos(horas, generador)
     tiempo_servidor = 0
-    cola_por_hora = [0] * Horas
-    i = 0
-    print(f"Simulación con generador: {generador.__class__.__name__}")
+    cola_en_espera = 0
+    cola_por_hora = [0] * horas
+    tiempos_espera = []
+    tiempos_en_sistema = []
+    uso_por_hora = [0.0] * horas
+    tiempos_entre_arribos = [arribos[i+1] - arribos[i] for i in range(len(arribos)-1)]
 
     for arribo in arribos:
-        i += 1
-        t_arribo = int(arribo)
-
-        if i in [1, 500, 1000, 1500]: 
-            print(f"Arribo {i}: {arribo:.4f}")
+        hora = int(arribo)
+        
         if arribo >= tiempo_servidor:
-            tiempo_inicio = arribo
-            if i in [1, 500, 1000, 1500]:
-                print(f"Tiempo de inicio de servicio: {tiempo_inicio:.4f}")
+            inicio_servicio = arribo
+            cola_en_espera = max(0, cola_en_espera - 1)
         else:
-            tiempo_inicio = tiempo_servidor
-            cola_por_hora[t_arribo] += 1
-            if i in [1, 500, 1000, 1500]:
-                print(f"Tiempo de inicio de servicio (con cola): {tiempo_inicio:.4f}")
-        
+            inicio_servicio = tiempo_servidor
+            cola_en_espera += 1
+
+        cola_por_hora[hora] = cola_en_espera
+
+        espera = max(0, inicio_servicio - arribo)
         servicio = generador_atencion(generador)
-        if i in [1, 500, 1000, 1500]:
-            print(f"Tiempo de servicio: {servicio:.4f}")
-        tiempo_salida = tiempo_inicio + servicio
-        if i in [1, 500, 1000, 1500]:
-            print(f"Tiempo de salida de servicio: {tiempo_salida:.4f}")
-        tiempo_servidor = tiempo_salida
-        if i in [1, 500, 1000, 1500]:
-            print(f"El cliente {i} fue atendido en la hora {int(tiempo_servidor)}")
-        if i in [1, 500, 1000, 1500]: print("\n")
+        salida = inicio_servicio + servicio
 
-def uso_por_hora():
-    generadores = [state_congruencial, state_xorshift, state_xoshiro]
-    utilizacion_por_hora_gen = []
-    for gen in generadores:
-        horas = 48
-        mu = 40
-        utilizacion_por_hora  = [0] * horas
-        arribos = generar_arribos(horas, gen)
-        
-        tiempo_servidor = 0
-        
-        for llegada in arribos:
-            hora = int(llegada)
-        
-            if llegada >= tiempo_servidor:
-                inicio_servicio = llegada
-            else:
-                inicio_servicio = tiempo_servidor
-            
-            duracion = generador_atencion(gen)
-            salida = inicio_servicio + duracion
-            tiempo_servidor = salida
-            
-            t_ini = inicio_servicio
-            t_fin = salida
+        for h in range(int(inicio_servicio), min(int(salida) + 1, horas)):
+            uso_por_hora[h] += min(salida, h + 1) - max(inicio_servicio, h)
 
-            # Distribuir la duración entre las horas afectadas
-            while t_ini < t_fin:
-                h = int(t_ini)
-                if h >= horas:
-                    break  # ya no consideramos horas fuera de la simulación
-                end_of_hour = h + 1
-                dur_in_hour = min(t_fin, end_of_hour) - t_ini
-                utilizacion_por_hora[h] += dur_in_hour
-                t_ini = end_of_hour
-                
-        utilizacion_por_hora_gen.append(utilizacion_por_hora)
+        tiempos_espera.append(espera)
+        tiempos_en_sistema.append(salida - arribo)
+        tiempo_servidor = salida
 
-    # GRAFICOS
+    clientes = len(arribos)
+    uso_por_hora = [min(1.0, u) for u in uso_por_hora]
+    prom_espera = sum(tiempos_espera) / clientes if clientes else 0
+    prom_en_sistema = sum(tiempos_en_sistema) / clientes if clientes else 0
+    tiempos_servicio = [t_en_sistema - t_espera for t_en_sistema, t_espera in zip(tiempos_en_sistema, tiempos_espera)]
 
-    # Nombres de los generadores para el gráfico
-    labels = ["GCL", "XORShift", "Xoshiro"]
+    return {
+        "arribos": arribos,
+        "esperas": tiempos_espera,
+        "en_sistema": tiempos_en_sistema,
+        "tiempos_entre_arribos": tiempos_entre_arribos,
+        "cola_por_hora": cola_por_hora,
+        "uso_por_hora": uso_por_hora,
+        "uso_total": sum(uso_por_hora),
+        "clientes": clientes,
+        "prom_espera": prom_espera,
+        "prom_en_sistema": prom_en_sistema,
+        "tiempos_servicio": tiempos_servicio
+    }
 
-    plt.figure(figsize=(12, 4))
 
-    # Para cada generador, graficar su curva de utilización
-    for i in range(len(generadores)):
-        plt.plot(range(48), utilizacion_por_hora_gen[i],  label=labels[i])
 
-    plt.xlabel("Hora del día")
-    plt.ylabel("Tasa de utilización del servidor")
-    plt.title("Utilización del servidor durante 48 horas")
-    plt.grid(True)
-    plt.legend()
-    plt.savefig("uso_por_hora.png")
-    plt.show()
+
 
 # Pruebas
 if __name__ == "__main__":
@@ -216,12 +181,134 @@ if __name__ == "__main__":
     state_congruencial = GCL(1234)
     state_xoshiro = Xoshiro(123456789)
 
-    sim = simular(state_xorshift)
-    sim = simular(state_congruencial)
-    sim = simular(state_xoshiro)
+    sim_gcl = simular(state_congruencial)
+    sim_xor = simular(state_xorshift)
+    sim_xos = simular(state_xoshiro)
+    resultados = [sim_gcl, sim_xor, sim_xos]
 
     #Tasa de utilización del servidor en función del tiempo. Visualizar cómo varía el comportamiento según la hora del día
-    uso_por_hora()
+    labels = ["GCL", "XORShift", "Xoshiro"]
+
+    plt.figure(figsize=(12, 4))
+
+    for i in range(len(resultados)):
+        uso = resultados[i]["uso_por_hora"]
+        plt.plot(range(48), uso, label=labels[i])
+
+    plt.xlabel("Hora del día")
+    plt.ylabel("Tasa de utilización del servidor")
+    plt.title("Tasa de Utilización del servidor durante 48 horas")
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig("grafico_utilizacion.png")
+
+    #El tiempo promedio en el sistema por cliente
+    #tiempo en el sistema = tiempo de espera + tiempo de servicio
+    promedios = [
+    sim_gcl["prom_en_sistema"],
+    sim_xor["prom_en_sistema"],
+    sim_xos["prom_en_sistema"]
+    ]
+    plt.figure(figsize=(6, 4))
+    plt.bar(labels, promedios, color=["blue", "green", "red"])
+    plt.ylabel("Tiempo promedio en el sistema (horas)")
+    plt.title("Comparación tiempo promedio en el sistema por generador")
+    plt.grid(axis='y')
+    plt.tight_layout()
+    plt.savefig("tiempo_promedio_sistema.png")  
+
+    #La distribución de los tiempos de espera
+    colores=["blue", "green", "red"]
+
+    plt.figure(figsize=(14, 4))
+    plt.suptitle("Tiempos de espera")
+    for i in range(3):
+        plt.subplot(1, 3, i + 1)
+        plt.title(labels[i])
+        plt.hist(resultados[i]["esperas"], bins=50, color=colores[i], edgecolor='black')
+        plt.xlabel("Horas")
+        if i == 0:
+            plt.ylabel("Frecuencia")
+        plt.grid(True)
+
+    plt.tight_layout()
+    plt.savefig("distribucion_tiempos_espera.png")
+
+    #El porcentaje de tiempo que el servidor está ocupado.
+    porcentajes_ocupacion = [
+    sim_gcl["uso_total"] / 48 * 100,
+    sim_xor["uso_total"] / 48 * 100,
+    sim_xos["uso_total"] / 48 * 100
+    ]
+
+    plt.figure(figsize=(6, 5))
+    bars= plt.bar(labels, porcentajes_ocupacion, color=colores)
+    plt.ylabel("Porcentaje de tiempo ocupado (%)")
+    plt.title("Uso total del servidor por generador")
+    plt.ylim(0, 100)
+    plt.grid(axis='y')
+    plt.tight_layout()
+    for bar, porcentaje in zip(bars, porcentajes_ocupacion):
+        plt.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 1, f"{porcentaje:.2f}%", ha='center', va='bottom', fontsize=10)
+    plt.savefig("porcentaje_ocupacion.png")
+
+    #Evolución de la longitud de la cola en el tiempo
+    plt.figure(figsize=(12, 5))
+
+    for i in range(3):
+        plt.plot(range(48), resultados[i]["cola_por_hora"], label=labels[i], color=colores[i],linewidth=2)
+
+    plt.xlabel("Hora")
+    plt.ylabel("Clientes en cola")
+    plt.title("Evolución de la longitud de la cola")
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig("evolucion_largo_cola.png")
+
+    #Histograma de los tiempos de espera en el sistema.
+    plt.figure(figsize=(14, 5))
+    plt.suptitle("Histograma de los tiempos de espera en el sistema")
+
+    for i in range(3):
+        plt.subplot(1, 3, i + 1)
+        plt.title(labels[i])
+        plt.hist(resultados[i]["esperas"], bins=50, alpha=0.6, label=labels[i], color=colores[i])
+        plt.xlabel("Tiempo de espera (horas)")
+        if i == 0:
+            # Solo la primera subgráfica tiene etiqueta en el eje y
+            plt.ylabel("Número de clientes")
+        plt.legend()
+        plt.grid(True)
+    plt.tight_layout()
+    plt.savefig("histograma_espera.png")
+
+    #distribución del tiempo entre arribos y de servicios simulados
+    plt.figure(figsize=(20, 10))
+    plt.suptitle("Distribución de tiempos entre arribos y servicios")
+    for i in range(3):
+        plt.subplot(2, 3, i + 1)
+        plt.title(f"Tiempo entre Arribos:  {labels[i]}")
+        # Tiempos entre arribos
+        plt.hist(resultados[i]["tiempos_entre_arribos"], bins=50, alpha=0.6, label="Entre arribos", color="blue",edgecolor='black')
+        plt.xlabel("Tiempo entre arribos (horas)")
+        plt.ylabel("Frecuencia")
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+
+        # Tiempos de servicio
+        plt.subplot(2, 3, i + 4)
+        plt.title(f"Tiempos de Servicio: {labels[i]}")
+        plt.hist(resultados[i]["tiempos_servicio"], bins=50, alpha=0.6, label="Servicios", color="red",edgecolor='black')
+
+        plt.xlabel("Tiempo del servicio (horas)")
+        plt.ylabel("Frecuencia")
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        plt.savefig("distribucion_arribos_servicios.png")
 
 
     
