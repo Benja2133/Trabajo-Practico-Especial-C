@@ -1,4 +1,5 @@
 import math
+import matplotlib.pyplot as plt
 
 class GCL: 
 
@@ -151,13 +152,62 @@ def simular(generador,Horas = 48):
             print(f"El cliente {i} fue atendido en la hora {int(tiempo_servidor)}")
         if i in [1, 500, 1000, 1500]: print("\n")
 
-    return {
-    "arribos": arribos,
-    "cola_por_hora": cola_por_hora,
-    "ocupado": tiempo_servidor,
-    "clientes": len(arribos),
-}
+def uso_por_hora():
+    generadores = [state_congruencial, state_xorshift, state_xoshiro]
+    utilizacion_por_hora_gen = []
+    for gen in generadores:
+        horas = 48
+        mu = 40
+        utilizacion_por_hora  = [0] * horas
+        arribos = generar_arribos(horas, gen)
+        
+        tiempo_servidor = 0
+        
+        for llegada in arribos:
+            hora = int(llegada)
+        
+            if llegada >= tiempo_servidor:
+                inicio_servicio = llegada
+            else:
+                inicio_servicio = tiempo_servidor
+            
+            duracion = generador_atencion(gen)
+            salida = inicio_servicio + duracion
+            tiempo_servidor = salida
+            
+            t_ini = inicio_servicio
+            t_fin = salida
 
+            # Distribuir la duración entre las horas afectadas
+            while t_ini < t_fin:
+                h = int(t_ini)
+                if h >= horas:
+                    break  # ya no consideramos horas fuera de la simulación
+                end_of_hour = h + 1
+                dur_in_hour = min(t_fin, end_of_hour) - t_ini
+                utilizacion_por_hora[h] += dur_in_hour
+                t_ini = end_of_hour
+                
+        utilizacion_por_hora_gen.append(utilizacion_por_hora)
+
+    # GRAFICOS
+
+    # Nombres de los generadores para el gráfico
+    labels = ["GCL", "XORShift", "Xoshiro"]
+
+    plt.figure(figsize=(12, 4))
+
+    # Para cada generador, graficar su curva de utilización
+    for i in range(len(generadores)):
+        plt.plot(range(48), utilizacion_por_hora_gen[i],  label=labels[i])
+
+    plt.xlabel("Hora del día")
+    plt.ylabel("Tasa de utilización del servidor")
+    plt.title("Utilización del servidor durante 48 horas")
+    plt.grid(True)
+    plt.legend()
+    plt.savefig("uso_por_hora.png")
+    plt.show()
 
 # Pruebas
 if __name__ == "__main__":
@@ -169,10 +219,10 @@ if __name__ == "__main__":
     sim = simular(state_xorshift)
     sim = simular(state_congruencial)
     sim = simular(state_xoshiro)
-    print(sim['arribos'])
-    print(f"Tiempo total de simulación: {sim['cola_por_hora']} horas")
-    print(f"Tiempo ocupado por el servidor: {sim['ocupado']:.4f} horas")
-    print(f"Clientes atendidos: {sim['clientes']}")
+
+    #Tasa de utilización del servidor en función del tiempo. Visualizar cómo varía el comportamiento según la hora del día
+    uso_por_hora()
+
 
     
         
