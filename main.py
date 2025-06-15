@@ -102,19 +102,19 @@ def lambda_t(t):
 #utiliza adelgazamiento para simular arribos que siguen el proceso de poisson no homogeneo
 def generar_arribos(T, generador,lambda_max=60):
     eventos = []
-    x = generador.random()
+    x = 1- generador.random()
     t = -math.log(x) / lambda_max # tiempo entre intentos (vars aleatorias con dist exp(lambda_max))
     while t<=T:
         v = generador.random() 
         if v < lambda_t(t) / lambda_max:
             eventos.append(t)
-        t += -math.log(generador.random()) / lambda_max
+        t += -math.log(1-generador.random()) / lambda_max
     
     return eventos
 
 # Generador de tiempos de atención con distribución exponencial
 def generador_atencion(generador, lambda_=40):
-    x = generador.random() 
+    x = 1- generador.random() 
     return -math.log(1-x)/lambda_
 
 def simular(generador, horas=48):
@@ -149,6 +149,14 @@ def simular(generador, horas=48):
         tiempos_espera.append(espera)
         tiempos_en_sistema.append(salida - arribo)
         tiempo_servidor = salida
+
+    h = 0
+    r = 0
+    for h in range(horas,):
+        if cola_por_hora[h] == 0 and cola_por_hora[h-1] != 0:
+            r += cola_por_hora[h-1]
+        cola_por_hora[h] = max(cola_por_hora[h] - r, 0)
+        h += 1
 
     clientes = len(arribos)
     uso_por_hora = [min(1.0, u) for u in uso_por_hora]
@@ -309,7 +317,6 @@ if __name__ == "__main__":
         plt.grid(True)
         plt.tight_layout()
         plt.savefig("distribucion_arribos_servicios.png")
-
 
     
         
