@@ -177,9 +177,9 @@ def simular(generador, horas=48):
 # Pruebas
 if __name__ == "__main__":
     # Inicializar el estado (debe ser distinto de cero)
-    state_xorshift = Xorshift(123456789)
-    state_congruencial = GCL(1234)
-    state_xoshiro = Xoshiro(123456789)
+    state_xorshift = Xorshift(1234567)
+    state_congruencial = GCL(1234567)
+    state_xoshiro = Xoshiro(1234567)
 
     sim_gcl = simular(state_congruencial)
     sim_xor = simular(state_xorshift)
