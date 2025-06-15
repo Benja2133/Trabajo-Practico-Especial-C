@@ -132,7 +132,6 @@ def simular(generador, horas=48):
         
         if arribo >= tiempo_servidor:
             inicio_servicio = arribo
-            cola_en_espera = max(0, cola_en_espera - 1)
         else:
             inicio_servicio = tiempo_servidor
             cola_en_espera += 1
