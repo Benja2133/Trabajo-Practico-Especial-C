@@ -193,17 +193,30 @@ if __name__ == "__main__":
     sim_xos = simular(state_xoshiro)
     resultados = [sim_gcl, sim_xor, sim_xos]
 
+    plt.figure(figsize=(12, 4))
+    plt.xlabel("Hora del día")
+    plt.ylabel("lambda(t)")
+    plt.title("Tasa de llegada de clientes (lambda(t))")
+    horas = range(48)
+    lambda_values = [lambda_t(h) for h in horas]
+    plt.plot(horas, lambda_values, label="lambda(t)", color='orange')
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig("lambda_t.png")
+    # Gráficos de resultados de la simulación
+
     #Tasa de utilización del servidor en función del tiempo. Visualizar cómo varía el comportamiento según la hora del día
     labels = ["GCL", "XORShift", "Xoshiro"]
 
     plt.figure(figsize=(12, 4))
 
     for i in range(len(resultados)):
-        uso = resultados[i]["uso_por_hora"]
+        uso = [u * 100 for u in resultados[i]["uso_por_hora"]]# Convertir a porcentaje
         plt.plot(range(48), uso, label=labels[i])
 
     plt.xlabel("Hora del día")
-    plt.ylabel("Tasa de utilización del servidor")
+    plt.ylabel("Tasa de utilización del servidor (%)")
     plt.title("Tasa de Utilización del servidor durante 48 horas")
     plt.grid(True)
     plt.legend()
@@ -236,7 +249,7 @@ if __name__ == "__main__":
         plt.hist(resultados[i]["esperas"], bins=50, color=colores[i], edgecolor='black')
         plt.xlabel("Horas")
         if i == 0:
-            plt.ylabel("Frecuencia")
+            plt.ylabel("Clientes")
         plt.grid(True)
 
     plt.tight_layout()
@@ -279,23 +292,19 @@ if __name__ == "__main__":
     plt.suptitle("Histograma de los tiempos de espera en el sistema")
 
     for i in range(3):
-        plt.subplot(1, 3, i + 1)
-        plt.title(labels[i])
-        plt.hist(resultados[i]["esperas"], bins=50, alpha=0.6, label=labels[i], color=colores[i])
-        plt.xlabel("Tiempo de espera (horas)")
-        if i == 0:
-            # Solo la primera subgráfica tiene etiqueta en el eje y
-            plt.ylabel("Número de clientes")
-        plt.legend()
-        plt.grid(True)
+        plt.hist(resultados[i]["esperas"], bins=50, alpha=0.3, label=labels[i], color=colores[i])
+    plt.xlabel("Tiempo de espera (horas)")
+    plt.ylabel("Número de clientes")
+    plt.legend()
+    plt.grid(True)
     plt.tight_layout()
     plt.savefig("histograma_espera.png")
 
     #distribución del tiempo entre arribos y de servicios simulados
-    plt.figure(figsize=(20, 10))
+    plt.figure(figsize=(20, 5))
     plt.suptitle("Distribución de tiempos entre arribos y servicios")
     for i in range(3):
-        plt.subplot(2, 3, i + 1)
+        plt.subplot(1, 3, i + 1)
         plt.title(f"Tiempo entre Arribos:  {labels[i]}")
         # Tiempos entre arribos
         plt.hist(resultados[i]["tiempos_entre_arribos"], bins=50, alpha=0.6, label="Entre arribos", color="blue",edgecolor='black')
@@ -304,9 +313,11 @@ if __name__ == "__main__":
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
-
+    plt.savefig("distribucion_arribos.png")
+    plt.figure(figsize=(20, 5))
+    for i in range(3):
         # Tiempos de servicio
-        plt.subplot(2, 3, i + 4)
+        plt.subplot(1, 3, i + 1)
         plt.title(f"Tiempos de Servicio: {labels[i]}")
         plt.hist(resultados[i]["tiempos_servicio"], bins=50, alpha=0.6, label="Servicios", color="red",edgecolor='black')
 
@@ -315,7 +326,7 @@ if __name__ == "__main__":
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
-        plt.savefig("distribucion_arribos_servicios.png")
+    plt.savefig("distribucion_servicios.png")
 
     
         
